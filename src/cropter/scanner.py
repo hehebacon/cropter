@@ -104,9 +104,24 @@ def scan_url(url: str, scope: Scope, report_path: str = "cropter-report.json") -
     technologies: set[str] = set()
 
     def add(severity: str, title: str, detail: str, page_url: str) -> None:
+        # Group repeated checks by finding type and retain every affected URL.
+        existing = next((
+            item for item in findings
+            if item["severity"] == severity and item["title"] == title
+        ), None)
+        if existing is not None:
+            existing["occurrences"] += 1
+            if page_url not in existing["affected_urls"]:
+                existing["affected_urls"].append(page_url)
+            return
         findings.append({
-            "severity": severity, "title": title, "detail": detail,
-            "url": page_url, "confidence": "low" if "heuristic" in detail.lower() else "medium",
+            "severity": severity,
+            "title": title,
+            "detail": detail,
+            "url": page_url,
+            "affected_urls": [page_url],
+            "occurrences": 1,
+            "confidence": "low" if "heuristic" in detail.lower() else "medium",
             "validation": "manual review required",
         })
 
