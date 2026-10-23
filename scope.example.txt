@@ -1,0 +1,5 @@
+# Example only. Replace with assets explicitly authorized by a program.
+# No network requests are made by `scope-check`.
+allow=app.example.test
+allow=api.example.test
+deny=admin.app.example.test
