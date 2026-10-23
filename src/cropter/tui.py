@@ -79,7 +79,7 @@ def read_required(prompt: str) -> str:
 def scope_check() -> None:
     heading("SCOPE CHECK")
     print("Checks a URL against a local allow/deny file. It sends no request.")
-    scope_path = input(f"Scope file [scope.example.txt]: ").strip() or "scope.example.txt"
+    scope_path = input("Scope file [scope.example.txt]: ").strip() or "scope.example.txt"
     url = read_required("URL to check:")
     print(f"\n{DIM}No network request will be made.{RESET}")
     if input("Run check? [Y/n]: ").strip().lower() not in {"", "y", "yes"}:
