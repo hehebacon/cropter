@@ -240,7 +240,7 @@ def scan_url(url: str, scope: Scope, report_path: str = "cropter-report.json") -
                 parser.feed(text)
             except Exception:
                 pass
-            for match in re.findall(r"<script[^>]+src=[\\"']([^\\"']+)", text, flags=re.I):
+            for match in re.findall(r"""<script[^>]+src=["']([^"']+)""", text, flags=re.I):
                 if match.startswith(("http://", "//")):
                     technologies.add(f"External script reference: {match[:180]}")
             for href in parser.links:
