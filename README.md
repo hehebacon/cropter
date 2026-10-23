@@ -9,10 +9,10 @@
 After installing the project in its virtual environment, run this from the repository root:
 
 ```bash
-python -m cropter.cli source-audit .
+bash run.sh audit .
 ```
 
-This performs the offline source review in one run and writes both `cropter-source-audit.json` and `cropter-source-audit.md`. Choose a custom report location with `--report reports/audit.json`. It does not execute or import target code. Test fixture-like matches are labeled as test context and downgraded when clearly embedded as test data; still verify every finding because real secrets can accidentally be committed to test files too.
+This performs the offline source review in one run and writes both `cropter-source-audit.json` and `cropter-source-audit.md`. Choose a custom report location with `bash run.sh audit . --report reports/audit.json`. It does not execute or import target code. Test fixture-like matches are labeled as test context and downgraded when clearly embedded as test data; still verify every finding because real secrets can accidentally be committed to test files too.
 
 ## Launch the interactive terminal UI
 
