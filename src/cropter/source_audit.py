@@ -87,7 +87,7 @@ def audit_source(root_path: str, report_path: str = "cropter-source-audit.json")
         for number, line in enumerate(lines, 1):
             for title, pattern in SECRET_PATTERNS:
                 if pattern.search(line):
-                    test_fixture = test_file and ("write_text" in line or line.lstrip().startswith(('"', "'")))
+                    test_fixture = test_file
                     severity = "low" if test_fixture else ("high" if "private key" in title.lower() else "medium")
                     shown_title = "Test fixture resembles credential" if test_fixture and title == "Possible credential in source" else title
                     add(shown_title, severity, path, number, line.strip(),
