@@ -26,8 +26,7 @@ def test_test_fixture_findings_are_labeled_and_downgraded(tmp_path):
     tests_dir.mkdir()
     source = tests_dir / "test_fixture.py"
     source.write_text(
-        'source.write_text("password = \\'not-a-real-password-value\\'\\\\n")\n'
-        'source.write_text("subprocess.run(command, shell=True)\\\\n")\n',
+        "source.write_text(\"password = 'not-a-real-password-value'\\\\nsubprocess.run(command, shell=True)\\\\n\", encoding='utf-8')\n",
         encoding="utf-8",
     )
     report = audit_source(str(tmp_path), str(tmp_path / "report.json"))
