@@ -11,6 +11,7 @@ from pathlib import Path
 
 from cropter import __version__
 from cropter.scope import load_scope
+from cropter.scanner import scan_url
 
 RESET = "\033[0m"
 CYAN = "\033[96m"
@@ -105,6 +106,35 @@ def scope_show() -> None:
     print(f"\nLoaded from: {Path(path).resolve()}")
 
 
+def scan_target() -> None:
+    heading("PASSIVE WEB REVIEW")
+    print("Low-impact same-origin review: normal GET requests only.")
+    print("No subdomain enumeration, form submission, brute force, or exploit payloads.")
+    scope_path = input("Scope file [scope.example.txt]: ").strip() or "scope.example.txt"
+    url = read_required("Authorized target URL:")
+    scope = load_scope(scope_path)
+    if not scope.allows_url(url):
+        raise ValueError("Target is outside the allowlist. Update the scope file only after verifying written authorization.")
+    print(f"\nTarget: {url}")
+    print(f"Scope file: {Path(scope_path).resolve()}")
+    print("The scan follows same-origin links only (up to 15 pages) and writes a JSON report.")
+    confirmation = input("I confirm I am authorized to test this target. Start? [y/N]: ").strip().lower()
+    if confirmation not in {"y", "yes"}:
+        print("Cancelled; no requests sent.")
+        return
+    report_path = input("Report path [cropter-report.json]: ").strip() or "cropter-report.json"
+    print(f"\n{CYAN}[SCAN]{RESET} Reviewing scoped pages...")
+    report = scan_url(url, scope, report_path)
+    print(f"{GREEN}[DONE]{RESET} Checked {report['page_count']} page(s).")
+    print(f"Findings: {len(report['findings'])}")
+    print(f"Report: {Path(report_path).resolve()}")
+    for item in report["findings"][:12]:
+        color = RED if item["severity"] in {"high", "critical"} else MAGENTA
+        print(f"  {color}[{item['severity'].upper()}]{RESET} {item['title']}")
+    if not report["findings"]:
+        print("No findings from these limited checks. This does not mean the site is secure.")
+
+
 def diagnostics() -> None:
     heading("SYSTEM DIAGNOSTICS")
     print(f"Python:      {sys.version.split()[0]}")
@@ -124,11 +154,12 @@ def main() -> int:
 {CYAN}{BOLD}┌─ CROPTer TOOLKIT ───────────────────────────────────┐{RESET}
 {CYAN}│{RESET}  {GREEN}1{RESET}  Scope check       {DIM}Check URL against local scope{RESET}
 {CYAN}│{RESET}  {GREEN}2{RESET}  Show scope        {DIM}Display allow/deny rules{RESET}
-{CYAN}│{RESET}  {GREEN}3{RESET}  Diagnostics       {DIM}Python and environment info{RESET}
-{CYAN}│{RESET}  {GREEN}4{RESET}  Exit
+{CYAN}│{RESET}  {GREEN}3{RESET}  Passive web review {DIM}Low-impact checks within explicit scope{RESET}
+{CYAN}│{RESET}  {GREEN}4{RESET}  Diagnostics       {DIM}Python and environment info{RESET}
+{CYAN}│{RESET}  {GREEN}5{RESET}  Exit
 {CYAN}{BOLD}└─────────────────────────────────────────────────────┘{RESET}""")
             choice = input(f"{MAGENTA}cropter>{RESET} ").strip().lower()
-            if choice in {"4", "q", "quit", "exit"}:
+            if choice in {"5", "q", "quit", "exit"}:
                 print(f"{GREEN}CROPTer session closed.{RESET}")
                 return 0
             try:
@@ -137,9 +168,11 @@ def main() -> int:
                 elif choice == "2":
                     scope_show()
                 elif choice == "3":
+                    scan_target()
+                elif choice == "4":
                     diagnostics()
                 else:
-                    print(f"{RED}Unknown option. Choose 1–4.{RESET}")
+                    print(f"{RED}Unknown option. Choose 1–5.{RESET}")
                     time.sleep(0.5)
                     continue
                 pause()
