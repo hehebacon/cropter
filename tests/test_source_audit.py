@@ -21,6 +21,23 @@ def test_audit_finds_static_patterns_and_redacts_secrets(tmp_path):
     assert report_path.with_suffix(".md").exists()
 
 
+def test_test_fixture_findings_are_labeled_and_downgraded(tmp_path):
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    source = tests_dir / "test_fixture.py"
+    source.write_text(
+        'source.write_text("password = \\'not-a-real-password-value\\'\\\\n")\n'
+        'source.write_text("subprocess.run(command, shell=True)\\\\n")\n',
+        encoding="utf-8",
+    )
+    report = audit_source(str(tmp_path), str(tmp_path / "report.json"))
+    fixture_findings = [item for item in report["findings"] if item["context"] == "test"]
+    assert fixture_findings
+    assert all(item["severity"] == "low" for item in fixture_findings)
+    assert any(item["title"] == "Test fixture resembles credential" for item in fixture_findings)
+    assert any(item["title"] == "Shell invocation in test fixture" for item in fixture_findings)
+
+
 def test_audit_rejects_missing_directory(tmp_path):
     missing = tmp_path / "missing"
     try:
