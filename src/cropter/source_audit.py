@@ -30,11 +30,23 @@ def _iter_files(root: Path):
     for path in root.rglob("*"):
         if any(part in SKIP_DIRS for part in path.parts):
             continue
-        if path.is_file() and path.suffix.lower() in SOURCE_SUFFIXES and path.stat().st_size <= MAX_FILE_BYTES:
+        try:
+            is_candidate = path.is_file() and path.suffix.lower() in SOURCE_SUFFIXES
+            size = path.stat().st_size if is_candidate else MAX_FILE_BYTES + 1
+        except OSError:
+            continue
+        if is_candidate and size <= MAX_FILE_BYTES:
             yield path
             count += 1
             if count >= MAX_FILES:
                 break
+
+
+def _is_test_file(path: Path, root: Path) -> bool:
+    relative = path.relative_to(root)
+    return any(part.lower() in {"test", "tests", "testing"} for part in relative.parts[:-1]) or (
+        path.name.lower().startswith("test_") or path.name.lower().endswith("_test.py")
+    )
 
 
 def audit_source(root_path: str, report_path: str = "cropter-source-audit.json") -> dict:
@@ -46,13 +58,21 @@ def audit_source(root_path: str, report_path: str = "cropter-source-audit.json")
     files_checked = 0
     unreadable_files = 0
 
-    def add(title, severity, path, line, evidence, detail, remediation):
-        secret_like = any(word in title.lower() for word in ("credential", "token", "key"))
+    def add(title, severity, path, line, evidence, detail, remediation, test_context=False):
+        secret_like = any(word in title.lower() for word in ("credential", "token", "key", "secret"))
+        if test_context:
+            detail = "Found in a test-named file; it may be an intentional fixture, but verify it is not a real secret or unsafe test behavior. " + detail
         findings.append({
-            "severity": severity, "title": title, "path": str(path.relative_to(root)),
-            "line": line, "evidence": "[REDACTED: inspect source locally]" if secret_like else evidence[:240],
-            "detail": detail, "remediation": remediation, "confidence": "low",
+            "severity": severity,
+            "title": title,
+            "path": str(path.relative_to(root)),
+            "line": line,
+            "evidence": "[REDACTED: inspect source locally]" if secret_like else evidence[:240],
+            "detail": detail,
+            "remediation": remediation,
+            "confidence": "low",
             "validation": "manual review required; static pattern only",
+            "context": "test" if test_context else "source",
         })
 
     for path in _iter_files(root):
@@ -63,22 +83,31 @@ def audit_source(root_path: str, report_path: str = "cropter-source-audit.json")
             continue
         files_checked += 1
         lines = text.splitlines()
+        test_file = _is_test_file(path, root)
         for number, line in enumerate(lines, 1):
             for title, pattern in SECRET_PATTERNS:
                 if pattern.search(line):
-                    severity = "high" if "private key" in title.lower() else "medium"
-                    add(title, severity, path, number, line.strip(),
+                    test_fixture = test_file and ("write_text" in line or line.lstrip().startswith(('"', "'")))
+                    severity = "low" if test_fixture else ("high" if "private key" in title.lower() else "medium")
+                    shown_title = "Test fixture resembles credential" if test_fixture and title == "Possible credential in source" else title
+                    add(shown_title, severity, path, number, line.strip(),
                         "A pattern resembling a secret was found; placeholders and false positives are possible.",
-                        "Verify locally. Rotate real exposed credentials, remove them from source where appropriate, and use environment configuration or a secret manager.")
+                        "Verify locally. Rotate real exposed credentials, remove them from source where appropriate, and use environment configuration or a secret manager.",
+                        test_context=test_fixture)
             if path.suffix.lower() == ".py":
                 if re.search(r"\bsubprocess\.\w+\s*\(", line) and re.search(r"\bshell\s*=\s*true\b", line, re.I):
-                    add("Shell invocation needs review", "medium", path, number, line.strip(),
+                    test_fixture = test_file and ("write_text" in line or line.lstrip().startswith(('"', "'")))
+                    title = "Shell invocation in test fixture" if test_fixture else "Shell invocation needs review"
+                    severity = "low" if test_fixture else "medium"
+                    add(title, severity, path, number, line.strip(),
                         "A subprocess call enables a shell; exploitability depends on data flow.",
-                        "Avoid shell=True with untrusted values; pass an argument list and validate inputs.")
+                        "Avoid shell=True with untrusted values; pass an argument list and validate inputs.",
+                        test_context=test_fixture)
                 if re.search(r"\byaml\.load\s*\(", line):
                     add("YAML loader needs review", "low", path, number, line.strip(),
                         "YAML loading behavior depends on the library version and loader argument.",
                         "Use a safe loader for untrusted YAML and verify the library API.")
+
         if path.suffix.lower() == ".py":
             try:
                 tree = ast.parse(text, filename=str(path))
@@ -112,12 +141,13 @@ def audit_source(root_path: str, report_path: str = "cropter-source-audit.json")
         "limitations": [
             "Offline static pattern analysis only; source files are never executed.",
             "Patterns can produce false positives and do not prove exploitability or data flow.",
+            "Test fixtures may intentionally contain unsafe-looking examples; these are labeled and downgraded when clearly embedded as test data.",
             "No remote vulnerability database is queried for dependencies.",
             "Only supported source extensions are inspected; oversized and generated files may be skipped.",
         ],
     }
     out = Path(report_path).expanduser()
-    out.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    out.parent.mkdir(parents=True, exist_ok=True)
     markdown_path = out.with_suffix(".md")
     lines_md = [
         "# CROPTer Source Audit", "", f"- Root: {root}",
@@ -129,9 +159,10 @@ def audit_source(root_path: str, report_path: str = "cropter-source-audit.json")
     for index, item in enumerate(findings, 1):
         lines_md.extend([
             f"## {index}. [{item['severity'].upper()}] {item['title']}", "",
-            f"- File: {item['path']}:{item['line']}", f"- Confidence: {item['confidence']}",
-            f"- Validation: {item['validation']}", "", item["detail"], "",
-            f"Evidence: {item['evidence']}", "", f"Recommended review: {item['remediation']}", "",
+            f"- File: {item['path']}:{item['line']}", f"- Context: {item['context']}",
+            f"- Confidence: {item['confidence']}", f"- Validation: {item['validation']}", "",
+            item["detail"], "", f"Evidence: {item['evidence']}", "",
+            f"Recommended review: {item['remediation']}", "",
         ])
     lines_md.extend(["## Limitations", ""])
     lines_md.extend(f"- {item}" for item in report["limitations"])
