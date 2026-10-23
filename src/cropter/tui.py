@@ -143,7 +143,7 @@ def diagnostics() -> None:
     print(f"Project dir: {Path.cwd()}")
     print(f"Virtual env: {GREEN if sys.prefix != getattr(sys, 'base_prefix', sys.prefix) else RED}"
           f"{'active' if sys.prefix != getattr(sys, 'base_prefix', sys.prefix) else 'not active'}{RESET}")
-    print("Network scan: disabled in this build")
+    print("Network mode: low-impact passive review; explicit scope required")
 
 
 def main() -> int:
