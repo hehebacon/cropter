@@ -4,6 +4,16 @@
 
 > CROPTer does not promise to discover zero-days or guarantee bounty income. Findings must be validated by a researcher and reported only through the asset owner's approved process.
 
+## Quick local source audit (one command)
+
+After installing the project in its virtual environment, run this from the repository root:
+
+```bash
+python -m cropter.cli source-audit .
+```
+
+This performs the offline source review in one run and writes both `cropter-source-audit.json` and `cropter-source-audit.md`. Choose a custom report location with `--report reports/audit.json`. It does not execute or import target code. Test fixture-like matches are labeled as test context and downgraded when clearly embedded as test data; still verify every finding because real secrets can accidentally be committed to test files too.
+
 ## Launch the interactive terminal UI
 
 From the repository root, run:
@@ -20,18 +30,18 @@ You can also launch the UI manually after installing the project with `python -m
 python -m cropter.tui
 ```
 
-The interactive menu now includes an **offline source audit** (option 5) for local repositories. It checks supported source files for secret-like patterns, Python dynamic evaluation, subprocess shell usage, and YAML loader calls without importing or executing the target code. It produces JSON and Markdown reports; secret-like evidence is redacted. These are static heuristics and require manual validation. A GitHub Actions workflow now runs the unit tests and Ruff lint checks on pushes and pull requests.\n\nThe current menu also provides a **low-impact passive web posture review**. It asks for one target URL and derives a narrow allowlist from that URL's hostname, so a separate scope file is not required for this mode. Before requests, it asks for confirmation that you own the target or have permission. It follows same-origin links only (up to 15 pages), uses ordinary GET requests, records selected response headers as evidence, checks common security-header posture, and writes both a JSON evidence report and a readable Markdown report with affected URLs, confidence, limitations, and suggested next steps. The terminal shows finding details and evidence. It does not enumerate subdomains, crawl third-party hosts, submit forms, brute-force, or send exploit payloads.
+The interactive menu includes an **offline source audit** (option 5) for local repositories. It checks supported source files for secret-like patterns, Python dynamic evaluation, subprocess shell usage, and YAML loader calls without importing or executing the target code. It produces JSON and Markdown reports; secret-like evidence is redacted. These are static heuristics and require manual validation. A GitHub Actions workflow runs unit tests and Ruff lint checks on pushes and pull requests.
+
+The menu also provides a **low-impact passive web posture review**. It asks for one target URL and derives a narrow allowlist from that URL's hostname, so a separate scope file is not required for this mode. Before requests, it asks for confirmation that you own the target or have permission. It follows same-origin links only (up to 15 pages), uses ordinary GET requests, records selected response headers as evidence, checks common security-header posture, and writes both a JSON evidence report and a readable Markdown report with affected URLs, confidence, limitations, and suggested next steps. The terminal shows finding details and evidence. It does not enumerate subdomains, crawl third-party hosts, submit forms, brute-force, or send exploit payloads.
 
 **Important:** this is still a posture-review milestone, not an autonomous vulnerability discovery engine. Missing headers and HTML heuristics are low-confidence leads, not confirmed vulnerabilities. It cannot reliably detect business-logic flaws, authenticated-only issues, access-control bugs, SSRF, SQL injection, or XSS. Validate manually, stay within the published program scope, and report only reproducible issues with meaningful impact. The boot animation is cosmetic.
 
 ## Initial scope
 
-The first milestone is a small, testable Python CLI foundation:
-
 - Explicit target scope and allowlist checks before any network action.
 - Local source/repository inventory and safe static checks.
 - Structured findings with evidence, confidence, and remediation notes.
-- JSON report output.
+- JSON and Markdown report output.
 - Unit tests and documented setup.
 
 ## Safety model
@@ -51,16 +61,4 @@ The first milestone is a small, testable Python CLI foundation:
 
 ## Status
 
-Repository initialized. Implementation will proceed incrementally with tests; integrations are not considered complete until verified.
-
-run code
-""" sh
-git clone https://github.com/hehebacon/cropter.git
-cd cropter
-
-python -m venv .venv
-source .venv/bin/activate
-
-pip install -e ".[dev]"
-pytest -q
-"""
+Implementation is incremental and test-driven. Findings remain static leads until manually validated.
