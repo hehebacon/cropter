@@ -32,3 +32,15 @@ The first milestone is a small, testable Python CLI foundation:
 ## Status
 
 Repository initialized. Implementation will proceed incrementally with tests; integrations are not considered complete until verified.
+
+run code
+""" sh
+git clone https://github.com/hehebacon/cropter.git
+cd cropter
+
+python -m venv .venv
+source .venv/bin/activate
+
+pip install -e ".[dev]"
+pytest -q
+"""
