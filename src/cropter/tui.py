@@ -132,10 +132,20 @@ def scan_target() -> None:
     report = scan_url(url, scope, report_path)
     print(f"{GREEN}[DONE]{RESET} Checked {report['page_count']} page(s).")
     print(f"Findings: {len(report['findings'])}")
-    print(f"Report: {Path(report_path).resolve()}")
+    print(f"JSON evidence: {Path(report_path).resolve()}")
+    print(f"Readable report: {Path(report_path).with_suffix('.md').resolve()}")
+    if report.get("page_limit_reached"):
+        print(f"{MAGENTA}[NOTE]{RESET} Page limit reached; additional pages may remain unchecked.")
     for item in report["findings"][:12]:
         color = RED if item["severity"] in {"high", "critical"} else MAGENTA
-        print(f"  {color}[{item['severity'].upper()}]{RESET} {item['title']}")
+        print(f"  {color}[{item['severity'].upper()}]{RESET} {item['title']} "
+              f"({item['occurrences']} occurrence(s), confidence: {item['confidence']})")
+        print(f"    {item['detail']}")
+        if item.get("evidence"):
+            evidence = ", ".join(f"{key}={value}" for key, value in item["evidence"].items())
+            print(f"    Evidence: {evidence}")
+    if len(report["findings"]) > 12:
+        print(f"  ... {len(report['findings']) - 12} additional finding(s) are in the reports.")
     if not report["findings"]:
         print("No findings from these limited checks. This does not mean the site is secure.")
 
