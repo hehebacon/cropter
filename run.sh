@@ -38,5 +38,17 @@ if ! "$PY" -c 'import cropter' >/dev/null 2>&1 || ! "$PY" -m pip show cropter >/
   "$PY" -m pip install -e .
 fi
 
+if [[ "${1:-}" == "audit" ]]; then
+  shift
+  set -- "${@:-.}"
+  printf "${GREEN}[OK]${RESET} Running one-shot offline source audit\n"
+  exec "$PY" -m cropter.cli source-audit "$@"
+fi
+
+if [[ $# -gt 0 ]]; then
+  printf "Usage: bash run.sh [audit [directory] [--report path]]\n" >&2
+  exit 2
+fi
+
 printf "${GREEN}[OK]${RESET} Launching CROPTer UI\n"
 exec "$PY" -m cropter.tui
