@@ -4,6 +4,24 @@
 
 > CROPTer does not promise to discover zero-days or guarantee bounty income. Findings must be validated by a researcher and reported only through the asset owner's approved process.
 
+## Launch the interactive terminal UI
+
+From the repository root, run:
+
+```bash
+bash run.sh
+```
+
+The launcher creates a project-local `.venv` when missing and installs CROPTer into that environment before starting the menu. It does not install packages into Kali's system Python. The first launch may need internet access to install the local package's build requirements.
+
+You can also launch the UI manually after installing the project with `python -m pip install -e .`:
+
+```bash
+python -m cropter.tui
+```
+
+The current menu provides local scope checks, scope-file viewing, and environment diagnostics. It does not yet perform vulnerability scans. The boot animation is cosmetic; it does not represent a scan or security test.
+
 ## Initial scope
 
 The first milestone is a small, testable Python CLI foundation:
