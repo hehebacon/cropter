@@ -8,9 +8,10 @@ import sys
 import time
 import traceback
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from cropter import __version__
-from cropter.scope import load_scope
+from cropter.scope import Scope, load_scope
 from cropter.scanner import scan_url
 
 RESET = "\033[0m"
@@ -107,23 +108,27 @@ def scope_show() -> None:
 
 
 def scan_target() -> None:
-    heading("PASSIVE WEB REVIEW")
-    print("Low-impact same-origin review: normal GET requests only.")
+    heading("AUTO-SCOPE PASSIVE WEB REVIEW")
+    print("Enter one URL; CROPTer derives a narrow scope automatically.")
+    print("Low-impact same-origin review: ordinary GET requests only.")
     print("No subdomain enumeration, form submission, brute force, or exploit payloads.")
-    scope_path = input("Scope file [scope.example.txt]: ").strip() or "scope.example.txt"
-    url = read_required("Authorized target URL:")
-    scope = load_scope(scope_path)
-    if not scope.allows_url(url):
-        raise ValueError("Target is outside the allowlist. Update the scope file only after verifying written authorization.")
+    url = read_required("Target URL (https://example.com):")
+    parsed = urlsplit(url)
+    if parsed.scheme.lower() not in {"http", "https"} or not parsed.hostname:
+        raise ValueError("Enter a complete http:// or https:// URL.")
+    if parsed.username or parsed.password:
+        raise ValueError("URLs containing usernames or passwords are not accepted.")
+    host = parsed.hostname.rstrip(".").lower()
+    scope = Scope((host,))
     print(f"\nTarget: {url}")
-    print(f"Scope file: {Path(scope_path).resolve()}")
-    print("The scan follows same-origin links only (up to 15 pages) and writes a JSON report.")
-    confirmation = input("I confirm I am authorized to test this target. Start? [y/N]: ").strip().lower()
+    print(f"Auto-scope host: {host}")
+    print("CROPTer will review only this origin, up to 15 pages. It will not discover or scan other hosts.")
+    confirmation = input("I confirm I own this target or have permission to test it. Start? [y/N]: ").strip().lower()
     if confirmation not in {"y", "yes"}:
         print("Cancelled; no requests sent.")
         return
     report_path = input("Report path [cropter-report.json]: ").strip() or "cropter-report.json"
-    print(f"\n{CYAN}[SCAN]{RESET} Reviewing scoped pages...")
+    print(f"\n{CYAN}[SCAN]{RESET} Reviewing the auto-scoped origin...")
     report = scan_url(url, scope, report_path)
     print(f"{GREEN}[DONE]{RESET} Checked {report['page_count']} page(s).")
     print(f"Findings: {len(report['findings'])}")
@@ -134,7 +139,6 @@ def scan_target() -> None:
     if not report["findings"]:
         print("No findings from these limited checks. This does not mean the site is secure.")
 
-
 def diagnostics() -> None:
     heading("SYSTEM DIAGNOSTICS")
     print(f"Python:      {sys.version.split()[0]}")
@@ -143,7 +147,7 @@ def diagnostics() -> None:
     print(f"Project dir: {Path.cwd()}")
     print(f"Virtual env: {GREEN if sys.prefix != getattr(sys, 'base_prefix', sys.prefix) else RED}"
           f"{'active' if sys.prefix != getattr(sys, 'base_prefix', sys.prefix) else 'not active'}{RESET}")
-    print("Network mode: low-impact passive review; explicit scope required")
+    print("Network mode: low-impact passive review; URL-derived same-origin scope")
 
 
 def main() -> int:
@@ -154,7 +158,7 @@ def main() -> int:
 {CYAN}{BOLD}┌─ CROPTer TOOLKIT ───────────────────────────────────┐{RESET}
 {CYAN}│{RESET}  {GREEN}1{RESET}  Scope check       {DIM}Check URL against local scope{RESET}
 {CYAN}│{RESET}  {GREEN}2{RESET}  Show scope        {DIM}Display allow/deny rules{RESET}
-{CYAN}│{RESET}  {GREEN}3{RESET}  Passive web review {DIM}Low-impact checks within explicit scope{RESET}
+{CYAN}│{RESET}  {GREEN}3{RESET}  Auto-scope web scan {DIM}Enter one URL; scope is derived automatically{RESET}
 {CYAN}│{RESET}  {GREEN}4{RESET}  Diagnostics       {DIM}Python and environment info{RESET}
 {CYAN}│{RESET}  {GREEN}5{RESET}  Exit
 {CYAN}{BOLD}└─────────────────────────────────────────────────────┘{RESET}""")
