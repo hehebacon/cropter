@@ -96,7 +96,7 @@ def audit_source(root_path: str, report_path: str = "cropter-source-audit.json")
                         test_context=test_fixture)
             if path.suffix.lower() == ".py":
                 if re.search(r"\bsubprocess\.\w+\s*\(", line) and re.search(r"\bshell\s*=\s*true\b", line, re.I):
-                    test_fixture = test_file and ("write_text" in line or line.lstrip().startswith(('"', "'")))
+                    test_fixture = test_file
                     title = "Shell invocation in test fixture" if test_fixture else "Shell invocation needs review"
                     severity = "low" if test_fixture else "medium"
                     add(title, severity, path, number, line.strip(),
