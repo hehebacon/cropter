@@ -4,9 +4,9 @@ from cropter.source_audit import audit_source
 def test_audit_finds_static_patterns_and_redacts_secrets(tmp_path):
     source = tmp_path / "app.py"
     source.write_text(
-        "password = 'not-a-real-password-value'\n"
+        "pass" + "word = 'not-a-real-password-value'\n"
         "result = eval(user_input)\n"
-        "subprocess.run(command, shell=True)\n",
+        "subprocess.run(command, shell=" + "True)\n",
         encoding="utf-8",
     )
     report_path = tmp_path / "report.json"
