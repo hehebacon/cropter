@@ -13,7 +13,7 @@ SKIP_DIRS = {".git", ".hg", ".svn", ".venv", "venv", "node_modules", "__pycache_
 SOURCE_SUFFIXES = {".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".php", ".java", ".go", ".rs", ".rb", ".cs", ".cpp", ".cc", ".c", ".h", ".hpp", ".sh"}
 
 SECRET_PATTERNS = [
-    ("Possible credential in source", re.compile(r"""(?i)\b(?:api[_-]?key|access[_-]?token|client[_-]?secret|password|passwd)\b\s*[:=]\s*["'][^"'\\s]{8,}["']""")),
+    ("Possible credential in source", re.compile(r"""(?i)\b(?:api[_-]?key|access[_-]?token|client[_-]?secret|password|passwd)\b\s*[:=]\s*["'][^"'\s]{8,}["']""")),
     ("Possible GitHub token", re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{20,}\b")),
     ("Possible AWS access key ID", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
     ("Private key material marker", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----")),
