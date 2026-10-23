@@ -15,7 +15,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlsplit, urldefrag
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from cropter.scope import Scope
 
@@ -76,10 +76,24 @@ def _same_origin(url: str, base: tuple[str, str, int | None]) -> bool:
         return False
 
 
-def _get(url: str) -> tuple[int, dict[str, str], bytes, str]:
+class SameOriginRedirectHandler(HTTPRedirectHandler):
+    """Refuse redirects that would send a request outside the selected origin."""
+
+    def __init__(self, allowed_origin: tuple[str, str, int | None]) -> None:
+        super().__init__()
+        self.allowed_origin = allowed_origin
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not _same_origin(newurl, self.allowed_origin):
+            return None
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def _get(url: str, allowed_origin: tuple[str, str, int | None]) -> tuple[int, dict[str, str], bytes, str]:
     request = Request(url, headers={"User-Agent": USER_AGENT, "Accept": "text/html,*/*;q=0.5"})
+    opener = build_opener(SameOriginRedirectHandler(allowed_origin))
     try:
-        response = urlopen(request, timeout=TIMEOUT_SECONDS)
+        response = opener.open(request, timeout=TIMEOUT_SECONDS)
     except HTTPError as exc:
         response = exc
     with response:
@@ -172,7 +186,7 @@ def scan_url(url: str, scope: Scope, report_path: str = "cropter-report.json") -
             continue
         visited.add(current)
         try:
-            status, headers, body, final_url = _get(current)
+            status, headers, body, final_url = _get(current, base)
         except (URLError, TimeoutError, OSError, ValueError) as exc:
             add("info", "Request failed", f"Could not fetch page: {exc}", current,
                 category="connectivity", evidence={"error": str(exc)})
@@ -181,6 +195,12 @@ def scan_url(url: str, scope: Scope, report_path: str = "cropter-report.json") -
             add("info", "Cross-origin redirect stopped",
                 "Redirect left the explicitly scoped origin; destination was not crawled.", current,
                 category="scope", evidence={"redirect_destination": final_url})
+            continue
+        location = headers.get("location", "")
+        if 300 <= status < 400 and location and not _same_origin(urljoin(current, location), base):
+            add("info", "Cross-origin redirect blocked",
+                "The server redirected to another origin. CROPTer did not follow that redirect.", current,
+                category="scope", evidence={"status": str(status), "location": location})
             continue
 
         content_type = headers.get("content-type", "")
