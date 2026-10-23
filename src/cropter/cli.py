@@ -9,6 +9,7 @@ from dataclasses import asdict
 
 from cropter import __version__
 from cropter.scope import load_scope
+from cropter.source_audit import audit_source
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -18,17 +19,49 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--version", action="version", version=f"CROPTer {__version__}")
     subparsers = parser.add_subparsers(dest="command", required=True)
+
     check = subparsers.add_parser("scope-check", help="check a URL against an explicit scope file")
     check.add_argument("--scope", required=True, help="path to scope file")
     check.add_argument("url", help="URL to check; no network request is made")
+
     show = subparsers.add_parser("scope-show", help="display parsed scope configuration")
     show.add_argument("--scope", required=True, help="path to scope file")
+
+    audit = subparsers.add_parser(
+        "source-audit",
+        help="audit a local source tree and write JSON plus Markdown reports in one run",
+    )
+    audit.add_argument("directory", help="local project directory to inspect")
+    audit.add_argument(
+        "--report",
+        default="cropter-source-audit.json",
+        help="JSON report path (Markdown is written beside it)",
+    )
     return parser
 
 
 def main() -> int:
     args = build_parser().parse_args()
     try:
+        if args.command == "source-audit":
+            report = audit_source(args.directory, args.report)
+            print(f"[DONE] Files checked: {report['files_checked']}")
+            print(f"Findings: {report['findings_count']}")
+            print(f"JSON evidence: {args.report}")
+            print(f"Readable report: {report['markdown_report']}")
+            for item in report["findings"][:15]:
+                print(
+                    f"  [{item['severity'].upper()}] {item['title']} "
+                    f"at {item['path']}:{item['line']} ({item['context']})"
+                )
+                print(f"    {item['detail']}")
+                print(f"    Evidence: {item['evidence']}")
+            if len(report["findings"]) > 15:
+                print(f"  ... {len(report['findings']) - 15} more finding(s) in the reports.")
+            if not report["findings"]:
+                print("No matching patterns found; this does not prove the project is secure.")
+            return 0
+
         scope = load_scope(args.scope)
         if args.command == "scope-check":
             allowed = scope.allows_url(args.url)
