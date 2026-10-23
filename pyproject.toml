@@ -17,6 +17,7 @@ dev = ["pytest>=8.0", "ruff>=0.6"]
 
 [project.scripts]
 cropter = "cropter.cli:main"
+cropter-ui = "cropter.tui:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
