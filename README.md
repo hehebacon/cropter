@@ -20,7 +20,7 @@ You can also launch the UI manually after installing the project with `python -m
 python -m cropter.tui
 ```
 
-The current menu provides local scope checks, scope-file viewing, and environment diagnostics. It does not yet perform vulnerability scans. The boot animation is cosmetic; it does not represent a scan or security test.
+The current menu also provides a **low-impact passive web posture review**. It checks the explicit allowlist before making requests, follows same-origin links only (up to 15 pages), uses ordinary GET requests, checks common response security headers, records limited technology hints, and writes a JSON report. It does not enumerate subdomains, crawl third-party hosts, submit forms, brute-force, or send exploit payloads. Results are heuristic and require manual validation; this is not a comprehensive vulnerability scanner. The boot animation is cosmetic.
 
 ## Initial scope
 
@@ -35,7 +35,7 @@ The first milestone is a small, testable Python CLI foundation:
 ## Safety model
 
 - Default to offline/local analysis.
-- Network testing is disabled unless an explicit scope file is supplied.
+- The passive web review requires an explicit scope file and a confirmation prompt before sending requests.
 - Never test systems without authorization; follow the program's scope, rate limits, and disclosure policy.
 - No exploit deployment, persistence, credential theft, or destructive testing.
 
