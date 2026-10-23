@@ -13,6 +13,7 @@ from urllib.parse import urlsplit
 from cropter import __version__
 from cropter.scope import Scope, load_scope
 from cropter.scanner import scan_url
+from cropter.source_audit import audit_source
 
 RESET = "\033[0m"
 CYAN = "\033[96m"
@@ -149,6 +150,27 @@ def scan_target() -> None:
     if not report["findings"]:
         print("No findings from these limited checks. This does not mean the site is secure.")
 
+def source_audit_menu() -> None:
+    heading("OFFLINE SOURCE AUDIT")
+    print("Analyze a local code repository without executing its files.")
+    print("Supported checks: secret-like patterns, dynamic Python execution, shell invocation, YAML loading.")
+    root = read_required("Project directory:")
+    report_path = input("Report path [cropter-source-audit.json]: ").strip() or "cropter-source-audit.json"
+    print(f"\n{CYAN}[AUDIT]{RESET} Inspecting local source files...")
+    report = audit_source(root, report_path)
+    print(f"{GREEN}[DONE]{RESET} Files checked: {report['files_checked']}")
+    print(f"Findings: {report['findings_count']}")
+    print(f"JSON evidence: {Path(report_path).expanduser().resolve()}")
+    print(f"Readable report: {Path(report_path).expanduser().with_suffix('.md').resolve()}")
+    for item in report["findings"][:15]:
+        print(f"  {MAGENTA}[{item['severity'].upper()}]{RESET} {item['title']} "
+              f"at {item['path']}:{item['line']}")
+        print(f"    {item['detail']}")
+        print(f"    Evidence: {item['evidence']}")
+    if not report["findings"]:
+        print("No matching patterns found; this does not prove the project is secure.")
+
+
 def diagnostics() -> None:
     heading("SYSTEM DIAGNOSTICS")
     print(f"Python:      {sys.version.split()[0]}")
@@ -170,10 +192,11 @@ def main() -> int:
 {CYAN}│{RESET}  {GREEN}2{RESET}  Show scope        {DIM}Display allow/deny rules{RESET}
 {CYAN}│{RESET}  {GREEN}3{RESET}  Auto-scope web scan {DIM}Enter one URL; scope is derived automatically{RESET}
 {CYAN}│{RESET}  {GREEN}4{RESET}  Diagnostics       {DIM}Python and environment info{RESET}
-{CYAN}│{RESET}  {GREEN}5{RESET}  Exit
+{CYAN}│{RESET}  {GREEN}5{RESET}  Offline source audit {DIM}Review a local repository without executing it{RESET}
+{CYAN}│{RESET}  {GREEN}6{RESET}  Exit
 {CYAN}{BOLD}└─────────────────────────────────────────────────────┘{RESET}""")
             choice = input(f"{MAGENTA}cropter>{RESET} ").strip().lower()
-            if choice in {"5", "q", "quit", "exit"}:
+            if choice in {"6", "q", "quit", "exit"}:
                 print(f"{GREEN}CROPTer session closed.{RESET}")
                 return 0
             try:
@@ -185,8 +208,10 @@ def main() -> int:
                     scan_target()
                 elif choice == "4":
                     diagnostics()
+                elif choice == "5":
+                    source_audit_menu()
                 else:
-                    print(f"{RED}Unknown option. Choose 1–5.{RESET}")
+                    print(f"{RED}Unknown option. Choose 1–6.{RESET}")
                     time.sleep(0.5)
                     continue
                 pause()
