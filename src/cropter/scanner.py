@@ -265,7 +265,7 @@ def scan_url(url: str, scope: Scope, report_path: str = "cropter-report.json") -
         "target": url,
         "scope_origin": {"scheme": base[0], "host": base[1], "port": base[2]},
         "pages_checked": pages, "page_count": len(pages), "page_limit": MAX_PAGES,
-        "page_limit_reached": len(pages) >= MAX_PAGES,
+        "page_limit_reached": len(visited) >= MAX_PAGES,
         "technology_hints": sorted(technologies), "finding_count": len(findings),
         "findings": findings,
         "limitations": [
@@ -277,6 +277,7 @@ def scan_url(url: str, scope: Scope, report_path: str = "cropter-report.json") -
             "Only report issues that are reproducible, materially impactful, and permitted by the program policy.",
         ],
     }
+    report["markdown_report"] = str(Path(report_path).with_suffix(".md"))
     Path(report_path).write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    report["markdown_report"] = _write_markdown(report, report_path)
+    _write_markdown(report, report_path)
     return report
